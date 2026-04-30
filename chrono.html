@@ -2,12 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Chrono par dossard - créer par Robert AURAY version 3.03 COPYRIGHT </title>
+  <title>Chrono par dossard - créer par Robert AURAY version 3.02 COPYRIGHT © </title>
 
   <style>
     /* ======== STYLE FFSLC ======== */
 
-    /* Couleurs fédérales */
     :root {
       --ffslc-blue: #003A70;
       --ffslc-red: #E2001A;
@@ -19,7 +18,6 @@
 
     body { font-family: sans-serif; margin: 20px; }
 
-    /* Bandeau discipline */
     #disciplineBanner {
       background: var(--ffslc-blue);
       color: var(--ffslc-white);
@@ -31,7 +29,6 @@
       margin-bottom: 15px;
     }
 
-    /* Zone options course */
     #raceOptions {
       background: var(--ffslc-grey-light);
       border: 2px solid var(--ffslc-blue);
@@ -47,9 +44,6 @@
       margin: 5px;
     }
 
-    #log, #arrivals, #results { margin-top: 20px; }
-
-    /* Boutons principaux */
     .big-btn {
       background: var(--ffslc-red);
       color: var(--ffslc-white);
@@ -61,11 +55,8 @@
       cursor: pointer;
       margin-right: 10px;
     }
-    .big-btn:hover {
-      background: #C00016;
-    }
+    .big-btn:hover { background: #C00016; }
 
-    /* Boutons secondaires */
     button {
       background: var(--ffslc-blue);
       color: var(--ffslc-white);
@@ -75,22 +66,17 @@
       font-size: 16px;
       cursor: pointer;
     }
-    button:hover {
-      background: #002A50;
-    }
+    button:hover { background: #002A50; }
 
-    /* Inputs */
     input, select {
       border: 2px solid var(--ffslc-blue);
       border-radius: 5px;
       padding: 6px 10px;
       font-size: 18px;
     }
+
     .bib-input { font-size: 20px; width: 120px; }
 
-    .toolbar { margin-top: 10px; margin-bottom: 10px; }
-
-    /* Tableau */
     table {
       border-collapse: collapse;
       width: 100%;
@@ -109,25 +95,9 @@
       padding: 6px;
     }
 
-    /* Arrivées en attente */
-    #arrivalTableBody tr td {
-      background: var(--ffslc-grey-mid);
-      font-weight: bold;
-    }
-
-    /* Statuts colorés */
-    .status-penalite {
-      background: #FFF3CD !important;
-      color: #856404 !important;
-    }
-    .status-abandon {
-      background: #D6D8DB !important;
-      color: #495057 !important;
-    }
-    .status-dsq {
-      background: #F8D7DA !important;
-      color: #721C24 !important;
-    }
+    .status-penalite { background: #FFF3CD !important; color: #856404 !important; }
+    .status-abandon { background: #D6D8DB !important; color: #495057 !important; }
+    .status-dsq { background: #F8D7DA !important; color: #721C24 !important; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -138,6 +108,7 @@
 <body>
 
 <div id="disciplineBanner"></div>
+<h1>Chrono par dossard - créer par Robert AURAY version 3.02 COPYRIGHT© </h1>
 
 <div id="raceOptions">
   <div>
@@ -162,10 +133,19 @@
     Date :
     <input type="text" id="dateInput" placeholder="22/04/2026">
   </div>
+
+  <div>
+    Nom officiel de l'épreuve :
+    <input type="text" id="epreuveInput" placeholder="Ex : Championnat Régional PACA">
+  </div>
 </div>
-
-<h1>Chrono par dossard - créer par Robert AURAY version 3.02 COPYRIGHT</h1>
-
+<div style="margin-top:15px;">
+  Type de classement :
+  <select id="typeClassement">
+    <option value="provisoire">Classement provisoire</option>
+    <option value="definitif">Classement définitif</option>
+  </select>
+</div>
 <h2>1. Charger le fichier</h2>
 <input type="file" id="csvFile" accept=".csv, .xlsx, .xls">
 <button id="loadCsvBtn">Importer</button>
@@ -191,24 +171,44 @@
   </table>
 </div>
 
-<h3>Statut concurrent</h3>
+<div style="border:2px solid red; padding:15px; margin-top:20px; background:#ffe5e5;">
+  <h3 style="color:red; margin-top:0;">Statut concurrent</h3>
+
+  <label style="color:red; font-weight:bold;">Dossard :</label>
+  <input type="number" id="statusBib" style="width:80px">
+
+  <br><br>
+
+  <label style="color:red; font-weight:bold;">Statut :</label>
+  <select id="statusSelect">
+    <option value="ok">OK</option>
+    <option value="penalite">Pénalité</option>
+    <option value="abandon">Abandon</option>
+    <option value="dsq">Disqualification</option>
+  </select>
+
+  <br><br>
+
+  <label style="color:red; font-weight:bold;">Pénalité (sec) :</label>
+  <input type="number" id="penaliteInput" style="width:80px">
+
+  <br><br>
+
+  <button id="applyStatusBtn" style="background:red; font-weight:bold;">Appliquer</button>
+</div>
+<h3>Modifier l'heure de départ</h3>
+
 Dossard :
-<input type="number" id="statusBib" style="width:80px">
+<input type="number" id="editStartBib" style="width:80px">
 
-Statut :
-<select id="statusSelect">
-  <option value="ok">OK</option>
-  <option value="penalite">Pénalité</option>
-  <option value="abandon">Abandon</option>
-  <option value="dsq">Disqualification</option>
-</select>
+Nouvelle heure (HH:MM:SS) :
+<input type="text" id="editStartTime" placeholder="09:32:15" style="width:120px">
 
-Pénalité (sec) :
-<input type="number" id="penaliteInput" style="width:80px">
+<button id="applyStartTimeBtn">Modifier heure départ</button>
 
-<button id="applyStatusBtn">Appliquer</button>
 
 <div id="results">
+
   <h3>Résultats</h3>
 
   <div class="toolbar">
@@ -241,167 +241,571 @@ Pénalité (sec) :
 </div>
 
 <script>
-  /* ============================
-     VARIABLES GLOBALES
-  ============================ */
-  let athletes = [];
-  let byBib = {};
-  let arrivalQueue = [];
-  let categories = new Set();
+/* ============================
+   VARIABLES GLOBALES
+============================ */
+let athletes = [];
+let byBib = {};
+let arrivalQueue = [];
+let categories = new Set();
 
-  let raceDistance = null;
-  let chienDor = "non";
-  let raceLieu = "";
-  let raceDate = "";
+let raceDistance = null;
+let chienDor = "non";
+let raceLieu = "";
+let raceDate = "";
+let raceEpreuve = "";
 
-  const logDiv = document.getElementById('log');
-  const arrivalTableBody = document.getElementById('arrivalTableBody');
-  const resultsTableBody = document.getElementById('resultsTableBody');
-  const categoryFilter = document.getElementById('categoryFilter');
+const logDiv = document.getElementById('log');
+const arrivalTableBody = document.getElementById('arrivalTableBody');
+const resultsTableBody = document.getElementById('resultsTableBody');
+const categoryFilter = document.getElementById('categoryFilter');
 
-  document.getElementById('distanceInput').addEventListener('change', e => raceDistance = parseFloat(e.target.value));
-  document.getElementById('chienDorInput').addEventListener('change', e => chienDor = e.target.value);
-  document.getElementById('lieuInput').addEventListener('change', e => raceLieu = e.target.value);
-  document.getElementById('dateInput').addEventListener('change', e => raceDate = e.target.value);
+document.getElementById('distanceInput').addEventListener('change', e => raceDistance = parseFloat(e.target.value));
+document.getElementById('chienDorInput').addEventListener('change', e => chienDor = e.target.value);
+document.getElementById('lieuInput').addEventListener('change', e => raceLieu = e.target.value);
+document.getElementById('dateInput').addEventListener('change', e => raceDate = e.target.value);
+document.getElementById('epreuveInput').addEventListener('change', e => raceEpreuve = e.target.value);
 
-  /* ============================
-     UTILITAIRES
-  ============================ */
-  function log(msg) {
-    logDiv.innerHTML += `<div>${msg}</div>`;
-  }
+// Met automatiquement la date du jour dans le champ
+window.addEventListener('load', () => {
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, '0');
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
 
-  function formatTime(ms) {
-    if (ms == null) return "";
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    const mm = ms % 1000;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(mm).padStart(3,'0')}`;
-  }
+  const formatted = `${dd}/${mm}/${yyyy}`;
 
-  function formatAbsoluteTime(ms) {
-    const d = new Date(ms);
-    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
-  }
+  document.getElementById('dateInput').value = formatted;
+  raceDate = formatted; // met aussi à jour la variable utilisée dans les PDF
+});
 
-  function parseCsv(text) {
-    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-    if (lines.length < 2) return [];
-    const header = lines[0].split(',').map(h => h.trim());
-    const rows = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      if (cols.length !== header.length) continue;
-      const obj = {};
-      for (let j = 0; j < header.length; j++) {
-        obj[header[j]] = cols[j].trim().replace(/^"|"$/g, '');
-      }
-      rows.push(obj);
+/* ============================
+   UTILITAIRES
+============================ */
+function log(msg) {
+  logDiv.innerHTML += `<div>${msg}</div>`;
+}
+
+function cleanName(str) {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function buildFileName(base) {
+  const dName = cleanName(athletes[0]?.discipline);
+  const eName = cleanName(raceEpreuve);
+  if (eName) return `${base}_${dName}_${eName}`;
+  return `${base}_${dName}`;
+}
+
+function formatTime(ms) {
+  if (ms == null) return "";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const mm = ms % 1000;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(mm).padStart(3,'0')}`;
+}
+
+function formatAbsoluteTime(ms) {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
+}
+function formatAbsoluteTimeExcel(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+  if (lines.length < 2) return [];
+  const header = lines[0].split(',').map(h => h.trim());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    if (cols.length !== header.length) continue;
+    const obj = {};
+    for (let j = 0; j < header.length; j++) {
+      obj[header[j]] = cols[j].trim().replace(/^"|"$/g, '');
     }
-    return rows;
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function parseHeureDepartToMs(str) {
+  if (!str) return null;
+  const parts = str.split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  const s = parts.length > 2 ? parseInt(parts[2], 10) || 0 : 0;
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s, 0).getTime();
+}
+
+/* ============================
+   IMPORT CSV / EXCEL
+============================ */
+function buildInternalStructures(rows) {
+  athletes = [];
+  byBib = {};
+  categories = new Set();
+
+  rows.forEach(r => {
+    const bib = parseInt(r['dossard'], 10);
+    if (isNaN(bib)) return;
+
+    const athlete = {
+      licence: r['licence'] || null,
+      nom: r['nom'] || '',
+      prenom: r['prenom'] || '',
+      categorie: r['categorie'] || '',
+      club: r['club'] || '',
+      chien: {
+        nom: r['nom_du_chien'] || '',
+        race: r['race'] || '',
+        puce: r['puce'] || ''
+      },
+      dossard: bib,
+      discipline: r['discipline'] || '',
+      moyenne: r['moyenne'] ? parseFloat(r['moyenne']) : null,
+      courses: r['courses'] ? parseInt(r['courses'], 10) : null,
+      participants: r['participants'] ? parseInt(r['participants'], 10) : null,
+      start_time: parseHeureDepartToMs(r['heure_depart']),
+      finish_time: null,
+      final_time: null,
+      status: "ok",
+      penalite: 0
+    };
+
+    athletes.push(athlete);
+    byBib[bib] = athlete;
+    if (athlete.categorie) categories.add(athlete.categorie);
+  });
+
+  buildCategoryFilter();
+  log(`Import terminé : ${athletes.length} concurrents chargés.`);
+}
+
+function buildCategoryFilter() {
+  categoryFilter.innerHTML = '<option value="">Toutes</option>';
+  Array.from(categories).sort().forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = cat;
+    categoryFilter.appendChild(opt);
+  });
+}
+
+function updateDisciplineBanner() {
+  if (athletes.length === 0) return;
+  let d = athletes[0].discipline || "";
+  d = d.replace(/Ã©/g,"é").replace(/Ã¨/g,"è").replace(/Ãª/g,"ê").replace(/Ã´/g,"ô").replace(/Ã€/g,"à");
+  document.getElementById('disciplineBanner').textContent = d.toUpperCase();
+}
+/************************************
+ * AFFICHAGE ARRIVÉES
+ ************************************/
+function renderArrivalQueue() {
+  arrivalTableBody.innerHTML = '';
+  arrivalQueue.forEach((a, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${formatAbsoluteTime(a.time)}</td>
+      <td>${a.bib !== null ? a.bib : ''}</td>
+    `;
+    arrivalTableBody.appendChild(tr);
+  });
+}
+
+/************************************
+ * AFFICHAGE RÉSULTATS
+ ************************************/
+function renderResults() {
+  const filterCat = categoryFilter.value;
+  resultsTableBody.innerHTML = '';
+
+  const filtered = athletes.filter(a =>
+    (!filterCat || a.categorie === filterCat)
+  );
+
+  const finishers = filtered
+    .filter(a => a.status !== 'abandon' && a.status !== 'dsq' && a.final_time !== null)
+    .sort((a, b) => a.final_time - b.final_time);
+
+  const abandons = filtered.filter(a => a.status === 'abandon');
+  const dsq = filtered.filter(a => a.status === 'dsq');
+
+  const ordered = [...finishers, ...abandons, ...dsq];
+  if (ordered.length === 0) return;
+
+  const firstTime = finishers.length ? finishers[0].final_time : null;
+  let place = 1;
+
+  ordered.forEach(a => {
+    const timeDisplay =
+      a.status === 'dsq' ? 'DSQ' :
+      a.status === 'abandon' ? 'ABANDON' :
+      formatTime(a.final_time);
+
+    let ecartDisplay = '-';
+    if (firstTime !== null && a.status !== 'abandon' && a.status !== 'dsq') {
+      const diff = a.final_time - firstTime;
+      ecartDisplay = diff === 0 ? '-' : '+' + formatTime(diff);
+    }
+
+    const penaltyDisplay =
+      a.status === 'penalite' && a.penalite > 0 ? formatTime(a.penalite) : '-';
+
+    let statutLabel = 'OK';
+    if (a.status === 'penalite') statutLabel = 'PÉNALITÉ';
+    if (a.status === 'abandon') statutLabel = 'ABANDON';
+    if (a.status === 'dsq') statutLabel = 'DSQ';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${(a.status !== 'abandon' && a.status !== 'dsq') ? place : ''}</td>
+      <td>${a.dossard}</td>
+      <td>${a.nom}</td>
+      <td>${a.prenom}</td>
+      <td>${a.discipline}</td>
+      <td>${a.categorie}</td>
+      <td>${timeDisplay}</td>
+      <td>${ecartDisplay}</td>
+      <td>${penaltyDisplay}</td>
+      <td>${statutLabel}</td>
+    `;
+
+    if (a.status === 'penalite') tr.classList.add('status-penalite');
+    if (a.status === 'abandon') tr.classList.add('status-abandon');
+    if (a.status === 'dsq') tr.classList.add('status-dsq');
+
+    resultsTableBody.appendChild(tr);
+
+    if (a.status !== 'abandon' && a.status !== 'dsq') place++;
+  });
+}
+
+/************************************
+ * STATUT CONCURRENT
+ ************************************/
+document.getElementById('applyStatusBtn').addEventListener('click', () => {
+  const bib = parseInt(document.getElementById('statusBib').value, 10);
+  const status = document.getElementById('statusSelect').value;
+  const penaliteSec = parseFloat(document.getElementById('penaliteInput').value) || 0;
+
+  const athlete = byBib[bib];
+  if (!athlete) {
+    log(`Dossard ${bib} introuvable`);
+    return;
   }
 
-  function parseHeureDepartToMs(str) {
-    if (!str) return null;
-    const parts = str.split(':');
-    const h = parseInt(parts[0], 10) || 0;
-    const m = parseInt(parts[1], 10) || 0;
-    const s = parts.length > 2 ? parseInt(parts[2], 10) || 0 : 0;
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s, 0).getTime();
+  athlete.status = status;
+
+  if (status === 'penalite') {
+    athlete.penalite = penaliteSec * 1000;
+    if (athlete.finish_time !== null && athlete.start_time !== null) {
+      athlete.final_time = (athlete.finish_time - athlete.start_time) + athlete.penalite;
+    }
+  } else if (status === 'ok') {
+    athlete.penalite = 0;
+    if (athlete.finish_time !== null && athlete.start_time !== null) {
+      athlete.final_time = (athlete.finish_time - athlete.start_time);
+    }
+  } else if (status === 'abandon') {
+    athlete.penalite = 0;
+    athlete.final_time = null;
+  } else if (status === 'dsq') {
+    athlete.penalite = 0;
+    athlete.final_time = 0;
   }
 
-  /* ============================
-     IMPORT CSV
-  ============================ */
-  function buildInternalStructures(rows) {
-    athletes = [];
-    byBib = {};
-    categories = new Set();
+  renderResults();
+});
 
-    rows.forEach(r => {
-      const bib = parseInt(r['dossard'], 10);
-      if (isNaN(bib)) return;
+/************************************
+ * ARRIVÉE
+ ************************************/
+document.getElementById('btnArrival').addEventListener('click', () => {
+  const now = Date.now();
+  arrivalQueue.push({ time: now, bib: null });
+  renderArrivalQueue();
+  log(`Arrivée enregistrée à ${now} ms`);
+});
 
-      const athlete = {
-        licence: r['licence'] || null,
-        nom: r['nom'] || '',
-        prenom: r['prenom'] || '',
-        categorie: r['categorie'] || '',
-        club: r['club'] || '',
-        chien: {
-          nom: r['nom_du_chien'] || '',
-          race: r['race'] || '',
-          puce: r['puce'] || ''
-        },
-        dossard: bib,
-        discipline: r['discipline'] || '',
-        moyenne: r['moyenne'] ? parseFloat(r['moyenne']) : null,
-        courses: r['courses'] ? parseInt(r['courses'], 10) : null,
-        participants: r['participants'] ? parseInt(r['participants'], 10) : null,
-        start_time: parseHeureDepartToMs(r['heure_depart']),
-        finish_time: null,
-        final_time: null,
-        status: "ok",
-        penalite: 0
-      };
+/************************************
+ * ATTRIBUTION DOSSARD
+ ************************************/
+document.getElementById('assignBibBtn').addEventListener('click', () => {
+  const bibInputField = document.getElementById('bibInput');
+  const bib = parseInt(bibInputField.value, 10);
 
-      athletes.push(athlete);
-      byBib[bib] = athlete;
-      if (athlete.categorie) categories.add(athlete.categorie);
-    });
-
-    buildCategoryFilter();
-    log(`Import terminé : ${athletes.length} concurrents chargés.`);
+  if (isNaN(bib)) {
+    alert('Dossard invalide');
+    return;
   }
 
-  function buildCategoryFilter() {
-    categoryFilter.innerHTML = '<option value="">Toutes</option>';
-    Array.from(categories).sort().forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
-      categoryFilter.appendChild(opt);
-    });
+  const idx = arrivalQueue.findIndex(a => a.bib === null);
+  if (idx === -1) {
+    alert('Aucune arrivée en attente');
+    return;
   }
 
-  function updateDisciplineBanner() {
-    if (athletes.length === 0) return;
-    let d = athletes[0].discipline || "";
-    d = d.replace(/Ã©/g,"é").replace(/Ã¨/g,"è").replace(/Ãª/g,"ê").replace(/Ã´/g,"ô").replace(/Ã€/g,"à");
-    document.getElementById('disciplineBanner').textContent = d.toUpperCase();
+  const arrival = arrivalQueue[idx];
+  const athlete = byBib[bib];
+
+  if (!athlete) {
+    log(`Dossard ${bib} inconnu — saisie annulée`);
+    arrival.bib = null;
+    bibInputField.value = '';
+    renderArrivalQueue();
+    return;
   }
 
-  /* ============================
-     AFFICHAGE ARRIVÉES
-  ============================ */
-  function renderArrivalQueue() {
-    arrivalTableBody.innerHTML = '';
-    arrivalQueue.forEach((a, idx) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td>${formatAbsoluteTime(a.time)}</td>
-        <td>${a.bib !== null ? a.bib : ''}</td>
-      `;
-      arrivalTableBody.appendChild(tr);
-    });
+  if (athlete.final_time !== null && athlete.status !== 'abandon' && athlete.status !== 'dsq') {
+    log(`Dossard ${bib} déjà utilisé — saisie annulée`);
+    arrival.bib = null;
+    bibInputField.value = '';
+    renderArrivalQueue();
+    return;
   }
 
-  /* ============================
-     AFFICHAGE RÉSULTATS
-  ============================ */
-  function renderResults() {
-    const filterCat = categoryFilter.value;
-    resultsTableBody.innerHTML = '';
+  arrival.bib = bib;
 
-    const filtered = athletes.filter(a =>
-      (!filterCat || a.categorie === filterCat)
-    );
+  if (!athlete.start_time && athlete.start_time !== 0) {
+    log(`Pas d'heure de départ pour le dossard ${bib}`);
+  } else {
+    athlete.finish_time = arrival.time;
+    let base = athlete.finish_time - athlete.start_time;
+    if (athlete.status === 'penalite') {
+      base += athlete.penalite;
+    }
+    athlete.final_time = base;
+    log(`Temps calculé pour dossard ${bib} : ${formatTime(athlete.final_time)}`);
+  }
+
+  bibInputField.value = '';
+  renderArrivalQueue();
+  renderResults();
+});
+
+categoryFilter.addEventListener('change', renderResults);
+document.getElementById('applyStartTimeBtn').addEventListener('click', () => {
+  const bib = parseInt(document.getElementById('editStartBib').value, 10);
+  const newTimeStr = document.getElementById('editStartTime').value.trim();
+
+  const athlete = byBib[bib];
+  if (!athlete) {
+    log(`Dossard ${bib} introuvable`);
+    return;
+  }
+
+  const newStartMs = parseHeureDepartToMs(newTimeStr);
+  if (!newStartMs) {
+    alert("Format d'heure invalide. Utilise HH:MM:SS");
+    return;
+  }
+
+  athlete.start_time = newStartMs;
+
+  // recalcul si arrivée déjà enregistrée
+  if (athlete.finish_time !== null) {
+    let base = athlete.finish_time - athlete.start_time;
+    if (athlete.status === 'penalite') {
+      base += athlete.penalite;
+    }
+    athlete.final_time = base;
+  }
+
+  log(`Nouvelle heure de départ pour dossard ${bib} : ${newTimeStr}`);
+  renderResults();
+});
+
+/************************************
+ * EXPORT EXCEL GÉNÉRAL
+ ************************************/
+document.getElementById('exportExcelBtn').addEventListener('click', () => {
+  const data = athletes
+    .filter(a => a.final_time !== null || a.status === 'abandon' || a.status === 'dsq')
+    .map(a => ({
+      Licence: a.licence,
+      Nom: a.nom,
+      Prénom: a.prenom,
+      Catégorie: a.categorie,
+      Club: a.club,
+      Nom_du_chien: a.chien.nom,
+      Race: a.chien.race,
+      Puce: a.chien.puce,
+      Dossard: a.dossard,
+      Discipline: a.discipline,
+      Distance_km: raceDistance,
+      Chien_d_or: chienDor,
+      Lieu: raceLieu,
+      Date: raceDate,
+      Epreuve: raceEpreuve,
+      Statut: a.status,
+      Penalite_ms: a.penalite,
+      Heure_depart: formatAbsoluteTimeExcel(a.start_time),
+      Temps_final: a.status === 'dsq'
+        ? 0
+        : (a.status === 'abandon' ? null : formatTime(a.final_time))
+    }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Général');
+
+  XLSX.writeFile(wb, buildFileName('classement_general') + '.xlsx');
+});
+
+/************************************
+ * EXPORT PDF GÉNÉRAL (PAYSAGE)
+ ************************************/
+document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  const typeClassement = document.getElementById('typeClassement').value;
+
+  let y = 15;
+
+  // TITRE EPREUVE — CENTRÉ + GRAS + GRAND
+  doc.setFontSize(20);
+  doc.setFont(undefined, "bold");
+  doc.text(`Épreuve : ${raceEpreuve || "-"}`, doc.internal.pageSize.width / 2, y, { align: "center" });
+  y += 12;
+
+  // TITRE CLASSEMENT — CENTRÉ + GRAS + GRAND
+  doc.text("Classement général", doc.internal.pageSize.width / 2, y, { align: "center" });
+  y += 12;
+
+  // Distance normale + Discipline en grand
+  doc.setFontSize(12);
+  doc.setFont(undefined, "normal");
+  doc.text(`Distance : ${raceDistance || "-"} km`, 14, y);
+
+  doc.setFontSize(16);
+  doc.setFont(undefined, "bold");
+  doc.text(`Discipline : ${athletes[0]?.discipline || "-"}`, 120, y);
+
+  y += 10;
+
+  // Retour police normale
+  doc.setFontSize(12);
+  doc.setFont(undefined, "normal");
+
+  doc.text(`Chien d'Or : ${chienDor}`, 14, y); y += 7;
+  doc.text(`Lieu : ${raceLieu || "-"}`, 14, y); y += 7;
+  doc.text(`Date : ${raceDate || "-"}`, 14, y); y += 10;
+
+  const filtered = athletes.filter(a =>
+    a.final_time !== null || a.status === 'abandon' || a.status === 'dsq'
+  );
+
+  const finishers = filtered
+    .filter(a => a.status !== 'abandon' && a.status !== 'dsq')
+    .sort((a, b) => a.final_time - b.final_time);
+
+  const abandons = filtered.filter(a => a.status === 'abandon');
+  const dsq = filtered.filter(a => a.status === 'dsq');
+
+  const ordered = [...finishers, ...abandons, ...dsq];
+
+  let place = 1;
+
+  const rows = ordered.map(a => {
+    const timeDisplay =
+      a.status === 'dsq' ? 'DSQ' :
+      a.status === 'abandon' ? 'ABANDON' :
+      formatTime(a.final_time);
+
+    return [
+      (a.status !== 'abandon' && a.status !== 'dsq') ? place++ : '',
+      a.licence || '',
+      a.dossard,
+      a.nom,
+      a.prenom,
+      a.categorie,
+      a.club,
+      a.chien.nom,
+      timeDisplay
+    ];
+  });
+
+  doc.autoTable({
+    head: [['Place', 'Licence', 'Dossard', 'Nom', 'Prénom', 'Catégorie', 'Club', 'Chien', 'Temps']],
+    body: rows,
+    startY: y
+  });
+
+  // Pied de page dynamique
+  const pageHeight = doc.internal.pageSize.height;
+  doc.setFontSize(10);
+  doc.setFont(undefined, "bold");
+
+  if (typeClassement === "provisoire") {
+    doc.text("Classement provisoire", 14, pageHeight - 10);
+  } else {
+    doc.text("Classement définitif", 14, pageHeight - 10);
+  }
+
+  doc.save(buildFileName('classement_general') + '.pdf');
+});
+
+
+/************************************
+ * EXPORT PDF PAR CATÉGORIES (PAYSAGE)
+ ************************************/
+document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  const typeClassement = document.getElementById('typeClassement').value;
+
+  const categoriesList = Array.from(categories).sort();
+  let y = 15;
+
+  // TITRE EPREUVE — CENTRÉ + GRAS + GRAND
+  doc.setFontSize(20);
+  doc.setFont(undefined, "bold");
+  doc.text(`Épreuve : ${raceEpreuve || "-"}`, doc.internal.pageSize.width / 2, y, { align: "center" });
+  y += 12;
+
+  // TITRE CLASSEMENT — CENTRÉ + GRAS + GRAND
+  doc.text("Classement par catégories", doc.internal.pageSize.width / 2, y, { align: "center" });
+  y += 12;
+
+  // Distance normale + Discipline en grand
+  doc.setFontSize(12);
+  doc.setFont(undefined, "normal");
+  doc.text(`Distance : ${raceDistance || "-"} km`, 14, y);
+
+  doc.setFontSize(16);
+  doc.setFont(undefined, "bold");
+  doc.text(`Discipline : ${athletes[0]?.discipline || "-"}`, 120, y);
+
+  y += 10;
+
+  // Retour police normale
+  doc.setFontSize(12);
+  doc.setFont(undefined, "normal");
+
+  doc.text(`Chien d'Or : ${chienDor}`, 14, y); y += 7;
+  doc.text(`Lieu : ${raceLieu || "-"}`, 14, y); y += 7;
+  doc.text(`Date : ${raceDate || "-"}`, 14, y); y += 10;
+
+  categoriesList.forEach(cat => {
+    const filtered = athletes
+      .filter(a => a.categorie === cat)
+      .filter(a => a.final_time !== null || a.status === 'abandon' || a.status === 'dsq');
 
     const finishers = filtered
-      .filter(a => a.status !== 'abandon' && a.status !== 'dsq' && a.final_time !== null)
+      .filter(a => a.status !== 'abandon' && a.status !== 'dsq')
       .sort((a, b) => a.final_time - b.final_time);
 
     const abandons = filtered.filter(a => a.status === 'abandon');
@@ -410,159 +814,56 @@ Pénalité (sec) :
     const ordered = [...finishers, ...abandons, ...dsq];
     if (ordered.length === 0) return;
 
-    const firstTime = finishers.length ? finishers[0].final_time : null;
+    doc.text(`Catégorie : ${cat}`, 14, y);
+    y += 7;
+
     let place = 1;
 
-    ordered.forEach(a => {
+    const rows = ordered.map(a => {
       const timeDisplay =
         a.status === 'dsq' ? 'DSQ' :
         a.status === 'abandon' ? 'ABANDON' :
         formatTime(a.final_time);
 
-      let ecartDisplay = '-';
-      if (firstTime !== null && a.status !== 'abandon' && a.status !== 'dsq') {
-        const diff = a.final_time - firstTime;
-        ecartDisplay = diff === 0 ? '-' : '+' + formatTime(diff);
-      }
-
-      const penaltyDisplay =
-        a.status === 'penalite' && a.penalite > 0 ? formatTime(a.penalite) : '-';
-
-      let statutLabel = 'OK';
-      if (a.status === 'penalite') statutLabel = 'PÉNALITÉ';
-      if (a.status === 'abandon') statutLabel = 'ABANDON';
-      if (a.status === 'dsq') statutLabel = 'DSQ';
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${(a.status !== 'abandon' && a.status !== 'dsq') ? place : ''}</td>
-        <td>${a.dossard}</td>
-        <td>${a.nom}</td>
-        <td>${a.prenom}</td>
-        <td>${a.discipline}</td>
-        <td>${a.categorie}</td>
-        <td>${timeDisplay}</td>
-        <td>${ecartDisplay}</td>
-        <td>${penaltyDisplay}</td>
-        <td>${statutLabel}</td>
-      `;
-
-      if (a.status === 'penalite') tr.classList.add('status-penalite');
-      if (a.status === 'abandon') tr.classList.add('status-abandon');
-      if (a.status === 'dsq') tr.classList.add('status-dsq');
-
-      resultsTableBody.appendChild(tr);
-
-      if (a.status !== 'abandon' && a.status !== 'dsq') place++;
+      return [
+        (a.status !== 'abandon' && a.status !== 'dsq') ? place++ : '',
+        a.licence || '',
+        a.dossard,
+        a.nom,
+        a.prenom,
+        a.club,
+        a.chien.nom,
+        timeDisplay
+      ];
     });
+
+    doc.autoTable({
+      head: [['Place', 'Licence', 'Dossard', 'Nom', 'Prénom', 'Club', 'Chien', 'Temps']],
+      body: rows,
+      startY: y
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+  });
+
+  // Pied de page dynamique
+  const pageHeight = doc.internal.pageSize.height;
+  doc.setFontSize(10);
+  doc.setFont(undefined, "bold");
+
+  if (typeClassement === "provisoire") {
+    doc.text("Classement provisoire", 14, pageHeight - 10);
+  } else {
+    doc.text("Classement définitif", 14, pageHeight - 10);
   }
 
-  /* ============================
-     STATUT CONCURRENT
-  ============================ */
-  document.getElementById('applyStatusBtn').addEventListener('click', () => {
-    const bib = parseInt(document.getElementById('statusBib').value, 10);
-    const status = document.getElementById('statusSelect').value;
-    const penaliteSec = parseFloat(document.getElementById('penaliteInput').value) || 0;
+  doc.save(buildFileName('classement_par_categories') + '.pdf');
+});
 
-    const athlete = byBib[bib];
-    if (!athlete) {
-      log(`Dossard ${bib} introuvable`);
-      return;
-    }
-
-    athlete.status = status;
-
-    if (status === 'penalite') {
-      athlete.penalite = penaliteSec * 1000;
-      if (athlete.finish_time !== null && athlete.start_time !== null) {
-        athlete.final_time = (athlete.finish_time - athlete.start_time) + athlete.penalite;
-      }
-    } else if (status === 'ok') {
-      athlete.penalite = 0;
-      if (athlete.finish_time !== null && athlete.start_time !== null) {
-        athlete.final_time = (athlete.finish_time - athlete.start_time);
-      }
-    } else if (status === 'abandon') {
-      athlete.penalite = 0;
-      athlete.final_time = null;
-    } else if (status === 'dsq') {
-      athlete.penalite = 0;
-      athlete.final_time = 0;
-    }
-
-    renderResults();
-  });
-
-  /* ============================
-     ARRIVÉE
-  ============================ */
-  document.getElementById('btnArrival').addEventListener('click', () => {
-    const now = Date.now();
-    arrivalQueue.push({ time: now, bib: null });
-    renderArrivalQueue();
-    log(`Arrivée enregistrée à ${now} ms`);
-  });
-
-  /* ============================
-     ATTRIBUTION DOSSARD
-  ============================ */
-  document.getElementById('assignBibBtn').addEventListener('click', () => {
-    const bibInputField = document.getElementById('bibInput');
-    const bib = parseInt(bibInputField.value, 10);
-
-    if (isNaN(bib)) {
-      alert('Dossard invalide');
-      return;
-    }
-
-    const idx = arrivalQueue.findIndex(a => a.bib === null);
-    if (idx === -1) {
-      alert('Aucune arrivée en attente');
-      return;
-    }
-
-    const arrival = arrivalQueue[idx];
-    const athlete = byBib[bib];
-
-    if (!athlete) {
-      log(`Dossard ${bib} inconnu — saisie annulée`);
-      arrival.bib = null;
-      bibInputField.value = '';
-      renderArrivalQueue();
-      return;
-    }
-
-    if (athlete.final_time !== null && athlete.status !== 'abandon' && athlete.status !== 'dsq') {
-      log(`Dossard ${bib} déjà utilisé — saisie annulée`);
-      arrival.bib = null;
-      bibInputField.value = '';
-      renderArrivalQueue();
-      return;
-    }
-
-    arrival.bib = bib;
-
-    if (!athlete.start_time && athlete.start_time !== 0) {
-      log(`Pas d'heure de départ pour le dossard ${bib}`);
-    } else {
-      athlete.finish_time = arrival.time;
-      let base = athlete.finish_time - athlete.start_time;
-      if (athlete.status === 'penalite') {
-        base += athlete.penalite;
-      }
-      athlete.final_time = base;
-      log(`Temps calculé pour dossard ${bib} : ${formatTime(athlete.final_time)}`);
-    }
-
-    bibInputField.value = '';
-    renderArrivalQueue();
-    renderResults();
-  });
-
-  categoryFilter.addEventListener('change', renderResults);
-
-  document.getElementById('loadCsvBtn').addEventListener('click', () => {
+/************************************
+ * IMPORT CSV / EXCEL (bouton)
+ ************************************/
+document.getElementById('loadCsvBtn').addEventListener('click', () => {
   const file = document.getElementById('csvFile').files[0];
   if (!file) {
     alert('Choisis un fichier CSV ou Excel');
@@ -571,7 +872,7 @@ Pénalité (sec) :
 
   const fileName = file.name.toLowerCase();
 
-  // --- CAS 1 : CSV ---
+  /* --- CAS 1 : CSV --- */
   if (fileName.endsWith('.csv')) {
     const reader = new FileReader();
     reader.onload = e => {
@@ -584,17 +885,14 @@ Pénalité (sec) :
     return;
   }
 
-  // --- CAS 2 : EXCEL ---
+  /* --- CAS 2 : EXCEL --- */
   if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
     const reader = new FileReader();
     reader.onload = e => {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // On prend la première feuille
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-
-      // Conversion en JSON
       const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
 
       buildInternalStructures(rows);
@@ -607,182 +905,6 @@ Pénalité (sec) :
 
   alert("Format non reconnu. Utilise CSV, XLS ou XLSX.");
 });
-
-  /* ============================
-     EXPORT EXCEL GÉNÉRAL
-  ============================ */
-  document.getElementById('exportExcelBtn').addEventListener('click', () => {
-    const data = athletes
-      .filter(a => a.final_time !== null || a.status === 'abandon' || a.status === 'dsq')
-      .map(a => ({
-        Licence: a.licence,
-        Nom: a.nom,
-        Prénom: a.prenom,
-        Catégorie: a.categorie,
-        Club: a.club,
-        Nom_du_chien: a.chien.nom,
-        Race: a.chien.race,
-        Puce: a.chien.puce,
-        Dossard: a.dossard,
-        Discipline: a.discipline,
-        Distance_km: raceDistance,
-        Chien_d_or: chienDor,
-        Lieu: raceLieu,
-        Date: raceDate,
-        Statut: a.status,
-        Penalite_ms: a.penalite,
-        Heure_depart: a.start_time,
-        Temps_final: a.status === 'dsq'
-          ? 0
-          : (a.status === 'abandon' ? null : formatTime(a.final_time))
-      }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Général');
-    XLSX.writeFile(wb, 'classement_general_complet.xlsx');
-  });
-
-  /* ============================
-     EXPORT PDF GÉNÉRAL (PAYSAGE)
-  ============================ */
-  document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: "landscape" });
-
-    doc.text('Classement général', 14, 15);
-    doc.text(`Distance : ${raceDistance || "-"} km`, 14, 22);
-    doc.text(`Chien d'Or : ${chienDor}`, 14, 29);
-    doc.text(`Lieu : ${raceLieu || "-"}`, 14, 36);
-    doc.text(`Date : ${raceDate || "-"}`, 14, 43);
-
-    const filtered = athletes.filter(a =>
-      a.final_time !== null || a.status === 'abandon' || a.status === 'dsq'
-    );
-
-    const finishers = filtered
-      .filter(a => a.status !== 'abandon' && a.status !== 'dsq')
-      .sort((a, b) => a.final_time - b.final_time);
-
-    const abandons = filtered.filter(a => a.status === 'abandon');
-    const dsq = filtered.filter(a => a.status === 'dsq');
-
-    const ordered = [...finishers, ...abandons, ...dsq];
-
-    let place = 1;
-
-    const rows = ordered.map(a => {
-      const timeDisplay =
-        a.status === 'dsq' ? 'DSQ' :
-        a.status === 'abandon' ? 'ABANDON' :
-        formatTime(a.final_time);
-
-      const penaltyDisplay =
-        a.status === 'penalite' && a.penalite > 0 ? formatTime(a.penalite) : '-';
-
-      const row = [
-        (a.status !== 'abandon' && a.status !== 'dsq') ? place : '',
-        a.licence || '',
-        a.dossard,
-        a.nom,
-        a.prenom,
-        a.categorie,
-        a.club,
-        a.chien.nom,
-        timeDisplay,
-        penaltyDisplay,
-        a.status
-      ];
-
-      if (a.status !== 'abandon' && a.status !== 'dsq') place++;
-
-      return row;
-    });
-
-    doc.autoTable({
-      head: [['Place', 'Licence', 'Dossard', 'Nom', 'Prénom', 'Catégorie', 'Club', 'Chien', 'Temps', 'Pénalité', 'Statut']],
-      body: rows,
-      startY: 50
-    });
-
-    doc.save('classement_general.pdf');
-  });
-
-  /* ============================
-     EXPORT PDF PAR CATÉGORIES (PAYSAGE)
-  ============================ */
-  document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: "landscape" });
-
-    const categoriesList = Array.from(categories).sort();
-    let y = 15;
-
-    doc.text('Classement par catégories', 14, y);
-    y += 7;
-    doc.text(`Distance : ${raceDistance || "-"} km`, 14, y); y += 7;
-    doc.text(`Chien d'Or : ${chienDor}`, 14, y); y += 7;
-    doc.text(`Lieu : ${raceLieu || "-"}`, 14, y); y += 7;
-    doc.text(`Date : ${raceDate || "-"}`, 14, y); y += 10;
-
-    categoriesList.forEach(cat => {
-      const filtered = athletes
-        .filter(a => a.categorie === cat)
-        .filter(a => a.final_time !== null || a.status === 'abandon' || a.status === 'dsq');
-
-      const finishers = filtered
-        .filter(a => a.status !== 'abandon' && a.status !== 'dsq')
-        .sort((a, b) => a.final_time - b.final_time);
-
-      const abandons = filtered.filter(a => a.status === 'abandon');
-      const dsq = filtered.filter(a => a.status === 'dsq');
-
-      const ordered = [...finishers, ...abandons, ...dsq];
-      if (ordered.length === 0) return;
-
-      doc.text(`Catégorie : ${cat}`, 14, y);
-      y += 7;
-
-      let place = 1;
-
-      const rows = ordered.map(a => {
-        const timeDisplay =
-          a.status === 'dsq' ? 'DSQ' :
-          a.status === 'abandon' ? 'ABANDON' :
-          formatTime(a.final_time);
-
-        const penaltyDisplay =
-          a.status === 'penalite' && a.penalite > 0 ? formatTime(a.penalite) : '-';
-
-        const row = [
-          (a.status !== 'abandon' && a.status !== 'dsq') ? place : '',
-          a.licence || '',
-          a.dossard,
-          a.nom,
-          a.prenom,
-          a.club,
-          a.chien.nom,
-          timeDisplay,
-          penaltyDisplay,
-          a.status
-        ];
-
-        if (a.status !== 'abandon' && a.status !== 'dsq') place++;
-
-        return row;
-      });
-
-      doc.autoTable({
-        head: [['Place', 'Licence', 'Dossard', 'Nom', 'Prénom', 'Club', 'Chien', 'Temps', 'Pénalité', 'Statut']],
-        body: rows,
-        startY: y
-      });
-
-      y = doc.lastAutoTable.finalY + 10;
-    });
-
-    doc.save('classement_par_categories.pdf');
-  });
 </script>
 
 </body>
