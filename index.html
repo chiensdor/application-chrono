@@ -2,11 +2,9 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Chrono par dossard - créé par Robert AURAY version 3.02 COPYRIGHT © </title>
+  <title>Chrono par dossard - créer par Robert AURAY version 3.03 COPYRIGHT © </title>
 
   <style>
-    /* ======== STYLE FFSLC ======== */
-
     :root {
       --ffslc-blue: #003A70;
       --ffslc-red: #E2001A;
@@ -98,6 +96,25 @@
     .status-penalite { background: #FFF3CD !important; color: #856404 !important; }
     .status-abandon { background: #D6D8DB !important; color: #495057 !important; }
     .status-dsq { background: #F8D7DA !important; color: #721C24 !important; }
+
+    /* POPUP ROUGE */
+    #errorPopup {
+      display:none;
+      background:#cc0000;
+      color:white;
+      padding:25px 35px;
+      font-size:26px;
+      font-weight:bold;
+      border-radius:12px;
+      position:fixed;
+      top:20px;
+      left:50%;
+      transform:translateX(-50%);
+      z-index:9999;
+      box-shadow:0 0 20px rgba(0,0,0,0.4);
+      text-align:center;
+      min-width:300px;
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -107,8 +124,29 @@
 
 <body>
 
+<!-- POPUP ROUGE -->
+<div id="errorPopup">
+  <div id="errorMessage">⚠️ Erreur</div>
+  <br>
+  <button onclick="closeErrorPopup()" style="
+    background:white;
+    color:#cc0000;
+    border:none;
+    padding:10px 20px;
+    font-size:20px;
+    font-weight:bold;
+    border-radius:8px;
+    cursor:pointer;
+  ">OK</button>
+</div>
+
+<!-- SON ERREUR -->
+<audio id="errorSound">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
 <div id="disciplineBanner"></div>
-<h1>Chrono par dossard - créer par Robert AURAY version 3.02 COPYRIGHT© </h1>
+<h1>Chrono par dossard - créer par Robert AURAY version 3.03 COPYRIGHT© </h1>
 
 <div id="raceOptions">
   <div>
@@ -139,6 +177,7 @@
     <input type="text" id="epreuveInput" placeholder="Ex : Championnat Régional PACA">
   </div>
 </div>
+
 <div style="margin-top:15px;">
   Type de classement :
   <select id="typeClassement">
@@ -146,12 +185,24 @@
     <option value="definitif">Classement définitif</option>
   </select>
 </div>
+
 <h2>1. Charger le fichier</h2>
+<div style="color:#003A70; font-weight:bold; margin-bottom:10px;">
+  ⚠️ Le fichier de départ doit être importé au format Excel (.xlsx)
+</div>
+
 <input type="file" id="csvFile" accept=".csv, .xlsx, .xls">
 <button id="loadCsvBtn">Importer</button>
 
 <div id="log"></div>
 
+<!-- AFFICHAGE DU NOMBRE DE CONCURRENTS -->
+<div id="countAthletes" style="
+  margin-top:10px;
+  font-size:22px;
+  font-weight:bold;
+  color:#003A70;
+"></div>
 <h2>2. Arrivées</h2>
 <button class="big-btn" id="btnArrival">Nouvelle arrivée</button>
 <input type="number" id="bibInput" class="bib-input" placeholder="Dossard">
@@ -196,6 +247,7 @@
 
   <button id="applyStatusBtn" style="background:red; font-weight:bold;">Appliquer</button>
 </div>
+
 <h3>Modifier l'heure de départ</h3>
 
 Dossard :
@@ -206,7 +258,6 @@ Nouvelle heure (HH:MM:SS) :
 
 <button id="applyStartTimeBtn">Modifier heure départ</button>
 
-
 <div id="results">
 
   <h3>Résultats</h3>
@@ -216,9 +267,15 @@ Nouvelle heure (HH:MM:SS) :
     <select id="categoryFilter">
       <option value="">Toutes</option>
     </select>
+
     <button id="exportExcelBtn">Export Excel (général)</button>
     <button id="exportPdfGeneralBtn">Export PDF (général)</button>
     <button id="exportPdfCatBtn">Export PDF (catégories séparées)</button>
+
+    <!-- BOUTON ENVOI FFSLC -->
+    <button id="sendMailBtn" style="background:#E2001A; display:none;">
+      Envoyer à la FFSLC
+    </button>
   </div>
 
   <table>
@@ -241,6 +298,25 @@ Nouvelle heure (HH:MM:SS) :
 </div>
 
 <script>
+/* ============================
+   POPUP ERREUR
+============================ */
+function showError(msg) {
+  const box = document.getElementById("errorPopup");
+  const text = document.getElementById("errorMessage");
+  const sound = document.getElementById("errorSound");
+
+  text.textContent = "⚠️ " + msg;
+  box.style.display = "block";
+
+  sound.currentTime = 0;
+  sound.play();
+}
+
+function closeErrorPopup() {
+  document.getElementById("errorPopup").style.display = "none";
+}
+
 /* ============================
    VARIABLES GLOBALES
 ============================ */
@@ -276,9 +352,8 @@ window.addEventListener('load', () => {
   const formatted = `${dd}/${mm}/${yyyy}`;
 
   document.getElementById('dateInput').value = formatted;
-  raceDate = formatted; // met aussi à jour la variable utilisée dans les PDF
+  raceDate = formatted;
 });
-
 /* ============================
    UTILITAIRES
 ============================ */
@@ -314,6 +389,7 @@ function formatAbsoluteTime(ms) {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
 }
+
 function formatAbsoluteTimeExcel(ms) {
   if (!ms) return "";
   const d = new Date(ms);
@@ -387,10 +463,16 @@ function buildInternalStructures(rows) {
     if (athlete.categorie) categories.add(athlete.categorie);
   });
 
+  document.getElementById("countAthletes").textContent =
+    `${athletes.length} concurrents chargés`;
+
   buildCategoryFilter();
-  log(`Import terminé : ${athletes.length} concurrents chargés.`);
+  updateDisciplineBanner();
 }
 
+/************************************
+ * FILTRE CATÉGORIES
+ ************************************/
 function buildCategoryFilter() {
   categoryFilter.innerHTML = '<option value="">Toutes</option>';
   Array.from(categories).sort().forEach(cat => {
@@ -407,6 +489,7 @@ function updateDisciplineBanner() {
   d = d.replace(/Ã©/g,"é").replace(/Ã¨/g,"è").replace(/Ãª/g,"ê").replace(/Ã´/g,"ô").replace(/Ã€/g,"à");
   document.getElementById('disciplineBanner').textContent = d.toUpperCase();
 }
+
 /************************************
  * AFFICHAGE ARRIVÉES
  ************************************/
@@ -490,7 +573,6 @@ function renderResults() {
     if (a.status !== 'abandon' && a.status !== 'dsq') place++;
   });
 }
-
 /************************************
  * STATUT CONCURRENT
  ************************************/
@@ -501,7 +583,7 @@ document.getElementById('applyStatusBtn').addEventListener('click', () => {
 
   const athlete = byBib[bib];
   if (!athlete) {
-    log(`Dossard ${bib} introuvable`);
+    showError(`Dossard ${bib} introuvable`);
     return;
   }
 
@@ -535,7 +617,6 @@ document.getElementById('btnArrival').addEventListener('click', () => {
   const now = Date.now();
   arrivalQueue.push({ time: now, bib: null });
   renderArrivalQueue();
-  log(`Arrivée enregistrée à ${now} ms`);
 });
 
 /************************************
@@ -546,13 +627,13 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
   const bib = parseInt(bibInputField.value, 10);
 
   if (isNaN(bib)) {
-    alert('Dossard invalide');
+    showError('Dossard invalide');
     return;
   }
 
   const idx = arrivalQueue.findIndex(a => a.bib === null);
   if (idx === -1) {
-    alert('Aucune arrivée en attente');
+    showError('Aucune arrivée en attente');
     return;
   }
 
@@ -560,7 +641,7 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
   const athlete = byBib[bib];
 
   if (!athlete) {
-    log(`Dossard ${bib} inconnu — saisie annulée`);
+    showError(`Dossard ${bib} inconnu — saisie annulée`);
     arrival.bib = null;
     bibInputField.value = '';
     renderArrivalQueue();
@@ -568,7 +649,7 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
   }
 
   if (athlete.final_time !== null && athlete.status !== 'abandon' && athlete.status !== 'dsq') {
-    log(`Dossard ${bib} déjà utilisé — saisie annulée`);
+    showError(`Dossard ${bib} déjà utilisé — saisie annulée`);
     arrival.bib = null;
     bibInputField.value = '';
     renderArrivalQueue();
@@ -578,7 +659,7 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
   arrival.bib = bib;
 
   if (!athlete.start_time && athlete.start_time !== 0) {
-    log(`Pas d'heure de départ pour le dossard ${bib}`);
+    showError(`Pas d'heure de départ pour le dossard ${bib}`);
   } else {
     athlete.finish_time = arrival.time;
     let base = athlete.finish_time - athlete.start_time;
@@ -586,7 +667,6 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
       base += athlete.penalite;
     }
     athlete.final_time = base;
-    log(`Temps calculé pour dossard ${bib} : ${formatTime(athlete.final_time)}`);
   }
 
   bibInputField.value = '';
@@ -595,25 +675,28 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
 });
 
 categoryFilter.addEventListener('change', renderResults);
+
+/************************************
+ * MODIFIER HEURE DE DÉPART
+ ************************************/
 document.getElementById('applyStartTimeBtn').addEventListener('click', () => {
   const bib = parseInt(document.getElementById('editStartBib').value, 10);
   const newTimeStr = document.getElementById('editStartTime').value.trim();
 
   const athlete = byBib[bib];
   if (!athlete) {
-    log(`Dossard ${bib} introuvable`);
+    showError(`Dossard ${bib} introuvable`);
     return;
   }
 
   const newStartMs = parseHeureDepartToMs(newTimeStr);
   if (!newStartMs) {
-    alert("Format d'heure invalide. Utilise HH:MM:SS");
+    showError("Format d'heure invalide. Utilise HH:MM:SS");
     return;
   }
 
   athlete.start_time = newStartMs;
 
-  // recalcul si arrivée déjà enregistrée
   if (athlete.finish_time !== null) {
     let base = athlete.finish_time - athlete.start_time;
     if (athlete.status === 'penalite') {
@@ -622,7 +705,6 @@ document.getElementById('applyStartTimeBtn').addEventListener('click', () => {
     athlete.final_time = base;
   }
 
-  log(`Nouvelle heure de départ pour dossard ${bib} : ${newTimeStr}`);
   renderResults();
 });
 
@@ -630,31 +712,42 @@ document.getElementById('applyStartTimeBtn').addEventListener('click', () => {
  * EXPORT EXCEL GÉNÉRAL
  ************************************/
 document.getElementById('exportExcelBtn').addEventListener('click', () => {
-  const data = athletes
-    .filter(a => a.final_time !== null || a.status === 'abandon' || a.status === 'dsq')
-    .map(a => ({
-      Licence: a.licence,
-      Nom: a.nom,
-      Prénom: a.prenom,
-      Catégorie: a.categorie,
-      Club: a.club,
-      Nom_du_chien: a.chien.nom,
-      Race: a.chien.race,
-      Puce: a.chien.puce,
-      Dossard: a.dossard,
-      Discipline: a.discipline,
-      Distance_km: raceDistance,
-      Chien_d_or: chienDor,
-      Lieu: raceLieu,
-      Date: raceDate,
-      Epreuve: raceEpreuve,
-      Statut: a.status,
-      Penalite_ms: a.penalite,
-      Heure_depart: formatAbsoluteTimeExcel(a.start_time),
-      Temps_final: a.status === 'dsq'
-        ? 0
-        : (a.status === 'abandon' ? null : formatTime(a.final_time))
-    }));
+  const filtered = athletes.filter(a =>
+    a.final_time !== null || a.status === 'abandon' || a.status === 'dsq'
+  );
+
+  const finishers = filtered
+    .filter(a => a.status !== 'abandon' && a.status !== 'dsq')
+    .sort((a, b) => a.final_time - b.final_time);
+
+  const abandons = filtered.filter(a => a.status === 'abandon');
+  const dsq = filtered.filter(a => a.status === 'dsq');
+
+  const ordered = [...finishers, ...abandons, ...dsq];
+
+  const data = ordered.map(a => ({
+    Lieu: raceLieu,
+    Chien_d_or: chienDor,
+    Date: raceDate,
+    Epreuve: raceEpreuve,
+    Discipline: a.discipline,
+    Distance_km: raceDistance,
+    Licence: a.licence,
+    Nom: a.nom,
+    Prénom: a.prenom,
+    Catégorie: a.categorie,
+    Club: a.club,
+    Nom_du_chien: a.chien.nom,
+    Race: a.chien.race,
+    Puce: a.chien.puce,
+    Dossard: a.dossard,
+    Statut: a.status,
+    Penalite_ms: a.penalite,
+    Heure_depart: formatAbsoluteTimeExcel(a.start_time),
+    Temps_final: a.status === 'dsq'
+      ? 0
+      : (a.status === 'abandon' ? null : formatTime(a.final_time))
+  }));
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -664,7 +757,55 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
 });
 
 /************************************
- * EXPORT PDF GÉNÉRAL (PAYSAGE)
+ * EXPORT EXCEL AUTOMATIQUE (DÉFINITIF)
+ ************************************/
+function exportExcelDefinitifAuto() {
+  const filtered = athletes.filter(a =>
+    a.final_time !== null || a.status === 'abandon' || a.status === 'dsq'
+  );
+
+  const finishers = filtered
+    .filter(a => a.status !== 'abandon' && a.status !== 'dsq')
+    .sort((a, b) => a.final_time - b.final_time);
+
+  const abandons = filtered.filter(a => a.status === 'abandon');
+  const dsq = filtered.filter(a => a.status === 'dsq');
+
+  const ordered = [...finishers, ...abandons, ...dsq];
+
+  const data = ordered.map(a => ({
+    Lieu: raceLieu,
+    Chien_d_or: chienDor,
+    Date: raceDate,
+    Epreuve: raceEpreuve,
+    Discipline: a.discipline,
+    Distance_km: raceDistance,
+    Licence: a.licence,
+    Nom: a.nom,
+    Prénom: a.prenom,
+    Catégorie: a.categorie,
+    Club: a.club,
+    Nom_du_chien: a.chien.nom,
+    Race: a.chien.race,
+    Puce: a.chien.puce,
+    Dossard: a.dossard,
+    Statut: a.status,
+    Penalite_ms: a.penalite,
+    Heure_depart: formatAbsoluteTimeExcel(a.start_time),
+    Temps_final: a.status === 'dsq'
+      ? 0
+      : (a.status === 'abandon' ? null : formatTime(a.final_time))
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Général');
+
+  XLSX.writeFile(wb, buildFileName('classement_definitif') + '.xlsx');
+}
+
+/************************************
+ * EXPORT PDF GÉNÉRAL
  ************************************/
 document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
   const { jsPDF } = window.jspdf;
@@ -674,17 +815,14 @@ document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
 
   let y = 15;
 
-  // TITRE EPREUVE — CENTRÉ + GRAS + GRAND
   doc.setFontSize(20);
   doc.setFont(undefined, "bold");
   doc.text(`Épreuve : ${raceEpreuve || "-"}`, doc.internal.pageSize.width / 2, y, { align: "center" });
   y += 12;
 
-  // TITRE CLASSEMENT — CENTRÉ + GRAS + GRAND
   doc.text("Classement général", doc.internal.pageSize.width / 2, y, { align: "center" });
   y += 12;
 
-  // Distance normale + Discipline en grand
   doc.setFontSize(12);
   doc.setFont(undefined, "normal");
   doc.text(`Distance : ${raceDistance || "-"} km`, 14, y);
@@ -695,7 +833,6 @@ document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
 
   y += 10;
 
-  // Retour police normale
   doc.setFontSize(12);
   doc.setFont(undefined, "normal");
 
@@ -743,7 +880,6 @@ document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
     startY: y
   });
 
-  // Pied de page dynamique
   const pageHeight = doc.internal.pageSize.height;
   doc.setFontSize(10);
   doc.setFont(undefined, "bold");
@@ -757,9 +893,8 @@ document.getElementById('exportPdfGeneralBtn').addEventListener('click', () => {
   doc.save(buildFileName('classement_general') + '.pdf');
 });
 
-
 /************************************
- * EXPORT PDF PAR CATÉGORIES (PAYSAGE)
+ * EXPORT PDF PAR CATÉGORIES
  ************************************/
 document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
   const { jsPDF } = window.jspdf;
@@ -770,17 +905,14 @@ document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
   const categoriesList = Array.from(categories).sort();
   let y = 15;
 
-  // TITRE EPREUVE — CENTRÉ + GRAS + GRAND
   doc.setFontSize(20);
   doc.setFont(undefined, "bold");
   doc.text(`Épreuve : ${raceEpreuve || "-"}`, doc.internal.pageSize.width / 2, y, { align: "center" });
   y += 12;
 
-  // TITRE CLASSEMENT — CENTRÉ + GRAS + GRAND
   doc.text("Classement par catégories", doc.internal.pageSize.width / 2, y, { align: "center" });
   y += 12;
 
-  // Distance normale + Discipline en grand
   doc.setFontSize(12);
   doc.setFont(undefined, "normal");
   doc.text(`Distance : ${raceDistance || "-"} km`, 14, y);
@@ -791,7 +923,6 @@ document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
 
   y += 10;
 
-  // Retour police normale
   doc.setFontSize(12);
   doc.setFont(undefined, "normal");
 
@@ -846,7 +977,6 @@ document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
     y = doc.lastAutoTable.finalY + 10;
   });
 
-  // Pied de page dynamique
   const pageHeight = doc.internal.pageSize.height;
   doc.setFontSize(10);
   doc.setFont(undefined, "bold");
@@ -861,31 +991,54 @@ document.getElementById('exportPdfCatBtn').addEventListener('click', () => {
 });
 
 /************************************
+ * ENVOI MAIL FFSL
+ ************************************/
+document.getElementById("sendMailBtn").addEventListener("click", () => {
+  const sujet = encodeURIComponent(`Classement définitif - ${raceEpreuve || ''}`);
+  const corps = encodeURIComponent(
+    `Bonjour,\n\nVeuillez trouver ci-joint le classement définitif de l'épreuve : ${raceEpreuve || ''}.\n\nSportivement,\n`
+  );
+
+  window.location.href = `mailto:resultats@ffslc.fr?subject=${sujet}&body=${corps}`;
+});
+
+/************************************
+ * EXPORT AUTO LORS DU PASSAGE EN DÉFINITIF
+ ************************************/
+document.getElementById("typeClassement").addEventListener("change", () => {
+  const type = document.getElementById("typeClassement").value;
+
+  document.getElementById("sendMailBtn").style.display =
+    type === "definitif" ? "inline-block" : "none";
+
+  if (type === "definitif") {
+    exportExcelDefinitifAuto();
+  }
+});
+
+/************************************
  * IMPORT CSV / EXCEL (bouton)
  ************************************/
 document.getElementById('loadCsvBtn').addEventListener('click', () => {
   const file = document.getElementById('csvFile').files[0];
   if (!file) {
-    alert('Choisis un fichier CSV ou Excel');
+    showError('Choisis un fichier CSV ou Excel');
     return;
   }
 
   const fileName = file.name.toLowerCase();
 
-  /* --- CAS 1 : CSV --- */
   if (fileName.endsWith('.csv')) {
     const reader = new FileReader();
     reader.onload = e => {
       const rows = parseCsv(e.target.result);
       buildInternalStructures(rows);
       renderResults();
-      updateDisciplineBanner();
     };
     reader.readAsText(file, 'ISO-8859-1');
     return;
   }
 
-  /* --- CAS 2 : EXCEL --- */
   if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
     const reader = new FileReader();
     reader.onload = e => {
@@ -897,13 +1050,12 @@ document.getElementById('loadCsvBtn').addEventListener('click', () => {
 
       buildInternalStructures(rows);
       renderResults();
-      updateDisciplineBanner();
     };
     reader.readAsArrayBuffer(file);
     return;
   }
 
-  alert("Format non reconnu. Utilise CSV, XLS ou XLSX.");
+  showError("Format non reconnu. Utilise CSV, XLS ou XLSX.");
 });
 </script>
 
