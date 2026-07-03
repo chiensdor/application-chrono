@@ -674,11 +674,34 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
   renderResults();
 });
 
+// 🆕 Validation par touche Entrée
+document.getElementById('bibInput').addEventListener('keydown', (e) => {
+  if (e.key === "Enter") {
+    document.getElementById('assignBibBtn').click();
+  }
+});
+
 categoryFilter.addEventListener('change', renderResults);
 
 /************************************
  * MODIFIER HEURE DE DÉPART
  ************************************/
+// Affiche automatiquement l'heure de départ actuelle quand on saisit un dossard
+document.getElementById('editStartBib').addEventListener('change', () => {
+  const bib = parseInt(document.getElementById('editStartBib').value, 10);
+  const athlete = byBib[bib];
+
+  if (!athlete) {
+    showError(`Dossard ${bib} introuvable`);
+    document.getElementById('editStartTime').value = "";
+    return;
+  }
+
+  // Affiche l'heure de départ actuelle dans le champ
+  document.getElementById('editStartTime').value =
+    formatAbsoluteTimeExcel(athlete.start_time);
+});
+
 document.getElementById('applyStartTimeBtn').addEventListener('click', () => {
   const bib = parseInt(document.getElementById('editStartBib').value, 10);
   const newTimeStr = document.getElementById('editStartTime').value.trim();
@@ -725,7 +748,7 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
 
   const ordered = [...finishers, ...abandons, ...dsq];
 
-  const data = ordered.map(a => ({
+const data = ordered.map(a => ({
     Lieu: raceLieu,
     Chien_d_or: chienDor,
     Date: raceDate,
@@ -744,10 +767,15 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
     Statut: a.status,
     Penalite_ms: a.penalite,
     Heure_depart: formatAbsoluteTimeExcel(a.start_time),
+
+    // 🆕 NOUVELLE COLONNE
+    Heure_arrivee: formatAbsoluteTimeExcel(a.finish_time),
+
     Temps_final: a.status === 'dsq'
       ? 0
       : (a.status === 'abandon' ? null : formatTime(a.final_time))
-  }));
+}));
+
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -773,7 +801,7 @@ function exportExcelDefinitifAuto() {
 
   const ordered = [...finishers, ...abandons, ...dsq];
 
-  const data = ordered.map(a => ({
+ const data = ordered.map(a => ({
     Lieu: raceLieu,
     Chien_d_or: chienDor,
     Date: raceDate,
@@ -792,10 +820,15 @@ function exportExcelDefinitifAuto() {
     Statut: a.status,
     Penalite_ms: a.penalite,
     Heure_depart: formatAbsoluteTimeExcel(a.start_time),
+
+    // 🆕 NOUVELLE COLONNE
+    Heure_arrivee: formatAbsoluteTimeExcel(a.finish_time),
+
     Temps_final: a.status === 'dsq'
       ? 0
       : (a.status === 'abandon' ? null : formatTime(a.final_time))
-  }));
+}));
+
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
