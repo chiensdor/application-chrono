@@ -1106,14 +1106,9 @@ document.getElementById('loadCsvBtn').addEventListener('click', () => {
   showError("Format non reconnu. Utilise CSV, XLS ou XLSX.");
 });
 document.getElementById("openModifArriveesBtn").addEventListener("click", () => {
-  // 1. Sauvegarde automatique du fichier résultat
   exportExcelDefinitifAuto();
-
-  // 2. Ouverture de l'application de modification des dossards
-  window.open("https://chiensdor.github.io/application-chrono/modifier%20arrivee3.02.html", "_blank");
-;
+  window.open("https://chiensdor.github.io/modification-chrono/", "_blank");
 });
-
 </script>
 
 </body>
