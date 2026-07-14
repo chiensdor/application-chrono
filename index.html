@@ -55,15 +55,16 @@
     }
     .big-btn:hover { background: #C00016; }
 
-    button {
-      background: var(--ffslc-blue);
-      color: var(--ffslc-white);
-      border: none;
-      border-radius: 5px;
-      padding: 8px 15px;
-      font-size: 16px;
-      cursor: pointer;
-    }
+   button {
+  background: var(--ffslc-blue);
+  color: var(--ffslc-white);   /* ✔ bon nom de variable */
+  border: none;
+  border-radius: 5px;
+  padding: 8px 15px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
     button:hover { background: #002A50; }
 
     input, select {
@@ -97,7 +98,6 @@
     .status-abandon { background: #D6D8DB !important; color: #495057 !important; }
     .status-dsq { background: #F8D7DA !important; color: #721C24 !important; }
 
-    /* POPUP ROUGE */
     #errorPopup {
       display:none;
       background:#cc0000;
@@ -115,6 +115,17 @@
       text-align:center;
       min-width:300px;
     }
+
+    /* Compteurs sur une ligne */
+    #arrivalCounters {
+      display:flex;
+      gap:40px;
+      font-size:20px;
+      font-weight:bold;
+      color:#333;
+      margin-top:15px;
+      margin-bottom:15px;
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -124,7 +135,7 @@
 
 <body>
 
-<!-- POPUP ROUGE -->
+<!-- POPUP ERREUR -->
 <div id="errorPopup">
   <div id="errorMessage">⚠️ Erreur</div>
   <br>
@@ -196,18 +207,26 @@
 
 <div id="log"></div>
 
-<!-- AFFICHAGE DU NOMBRE DE CONCURRENTS -->
 <div id="countAthletes" style="
   margin-top:10px;
   font-size:22px;
   font-weight:bold;
   color:#003A70;
 "></div>
+
 <h2>2. Arrivées</h2>
+
 <button class="big-btn" id="btnArrival">Nouvelle arrivée</button>
 <input type="number" id="bibInput" class="bib-input" placeholder="Dossard">
 <button id="assignBibBtn">Attribuer dossard</button>
 
+<!-- COMPTEURS OPTION A -->
+<div id="arrivalCounters">
+  <div id="countTotal">Arrivées enregistrées : 0</div>
+  <div id="countAttributed">Arrivées attribuées : 0</div>
+  <div id="countPending">Arrivées en attente : 0</div>
+</div>
+<!-- ARRIVÉES EN ATTENTE -->
 <div id="arrivals">
   <h3>Arrivées en attente</h3>
   <table>
@@ -271,8 +290,9 @@ Nouvelle heure (HH:MM:SS) :
     <button id="exportExcelBtn">Export Excel (général)</button>
     <button id="exportPdfGeneralBtn">Export PDF (général)</button>
     <button id="exportPdfCatBtn">Export PDF (catégories séparées)</button>
+    <button id="openModifArriveesBtn" style="background:#003A70; color:white;">
+  Modification dossards arrivées
 
-    <!-- BOUTON ENVOI FFSLC -->
     <button id="sendMailBtn" style="background:#E2001A; display:none;">
       Envoyer à la FFSLC
     </button>
@@ -298,9 +318,6 @@ Nouvelle heure (HH:MM:SS) :
 </div>
 
 <script>
-/* ============================
-   POPUP ERREUR
-============================ */
 function showError(msg) {
   const box = document.getElementById("errorPopup");
   const text = document.getElementById("errorMessage");
@@ -317,9 +334,6 @@ function closeErrorPopup() {
   document.getElementById("errorPopup").style.display = "none";
 }
 
-/* ============================
-   VARIABLES GLOBALES
-============================ */
 let athletes = [];
 let byBib = {};
 let arrivalQueue = [];
@@ -342,7 +356,6 @@ document.getElementById('lieuInput').addEventListener('change', e => raceLieu = 
 document.getElementById('dateInput').addEventListener('change', e => raceDate = e.target.value);
 document.getElementById('epreuveInput').addEventListener('change', e => raceEpreuve = e.target.value);
 
-// Met automatiquement la date du jour dans le champ
 window.addEventListener('load', () => {
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, '0');
@@ -491,10 +504,22 @@ function updateDisciplineBanner() {
 }
 
 /************************************
- * AFFICHAGE ARRIVÉES
+ * AFFICHAGE ARRIVÉES + COMPTEURS
  ************************************/
 function renderArrivalQueue() {
   arrivalTableBody.innerHTML = '';
+
+  const totalArrivals = arrivalQueue.length;
+  const attributedArrivals = arrivalQueue.filter(a => a.bib !== null).length;
+  const pendingArrivals = arrivalQueue.filter(a => a.bib === null).length;
+
+  document.getElementById("countTotal").textContent =
+    "Arrivées enregistrées : " + totalArrivals;
+  document.getElementById("countAttributed").textContent =
+    "Arrivées attribuées : " + attributedArrivals;
+  document.getElementById("countPending").textContent =
+    "Arrivées en attente : " + pendingArrivals;
+
   arrivalQueue.forEach((a, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -674,7 +699,7 @@ document.getElementById('assignBibBtn').addEventListener('click', () => {
   renderResults();
 });
 
-// 🆕 Validation par touche Entrée
+// Validation par touche Entrée
 document.getElementById('bibInput').addEventListener('keydown', (e) => {
   if (e.key === "Enter") {
     document.getElementById('assignBibBtn').click();
@@ -686,7 +711,6 @@ categoryFilter.addEventListener('change', renderResults);
 /************************************
  * MODIFIER HEURE DE DÉPART
  ************************************/
-// Affiche automatiquement l'heure de départ actuelle quand on saisit un dossard
 document.getElementById('editStartBib').addEventListener('change', () => {
   const bib = parseInt(document.getElementById('editStartBib').value, 10);
   const athlete = byBib[bib];
@@ -697,7 +721,6 @@ document.getElementById('editStartBib').addEventListener('change', () => {
     return;
   }
 
-  // Affiche l'heure de départ actuelle dans le champ
   document.getElementById('editStartTime').value =
     formatAbsoluteTimeExcel(athlete.start_time);
 });
@@ -748,7 +771,7 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
 
   const ordered = [...finishers, ...abandons, ...dsq];
 
-const data = ordered.map(a => ({
+  const data = ordered.map(a => ({
     Lieu: raceLieu,
     Chien_d_or: chienDor,
     Date: raceDate,
@@ -767,15 +790,11 @@ const data = ordered.map(a => ({
     Statut: a.status,
     Penalite_ms: a.penalite,
     Heure_depart: formatAbsoluteTimeExcel(a.start_time),
-
-    // 🆕 NOUVELLE COLONNE
     Heure_arrivee: formatAbsoluteTimeExcel(a.finish_time),
-
     Temps_final: a.status === 'dsq'
       ? 0
       : (a.status === 'abandon' ? null : formatTime(a.final_time))
-}));
-
+  }));
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -801,7 +820,7 @@ function exportExcelDefinitifAuto() {
 
   const ordered = [...finishers, ...abandons, ...dsq];
 
- const data = ordered.map(a => ({
+  const data = ordered.map(a => ({
     Lieu: raceLieu,
     Chien_d_or: chienDor,
     Date: raceDate,
@@ -820,15 +839,11 @@ function exportExcelDefinitifAuto() {
     Statut: a.status,
     Penalite_ms: a.penalite,
     Heure_depart: formatAbsoluteTimeExcel(a.start_time),
-
-    // 🆕 NOUVELLE COLONNE
     Heure_arrivee: formatAbsoluteTimeExcel(a.finish_time),
-
     Temps_final: a.status === 'dsq'
       ? 0
       : (a.status === 'abandon' ? null : formatTime(a.final_time))
-}));
-
+  }));
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -1090,6 +1105,14 @@ document.getElementById('loadCsvBtn').addEventListener('click', () => {
 
   showError("Format non reconnu. Utilise CSV, XLS ou XLSX.");
 });
+document.getElementById("openModifArriveesBtn").addEventListener("click", () => {
+  // 1. Sauvegarde automatique du fichier résultat
+  exportExcelDefinitifAuto();
+
+  // 2. Ouverture de l'application de modification des dossards
+  window.open("https://github.com/chiensdor/application-chrono/blob/main/modif%20arrivee3.02.html", "_blank");
+});
+
 </script>
 
 </body>
