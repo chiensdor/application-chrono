@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Modification du classement - FFSLC</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+
+  table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+  th, td { border: 1px solid #333; padding: 8px; }
+
+  th { background: #003A70; color: white; }
+
+  tr.dragging { opacity: 0.5; }
+
+  button { padding: 10px 20px; margin: 10px 5px; font-size: 16px; cursor: pointer; }
+  input[type="text"], input[type="number"] { width: 80px; text-align:center; }
+</style>
+</head>
+
+<body>
+
+<h2 style="margin-top:0; padding:10px; background:#003A70; color:white;">
+  Discipline : <span id="disciplineHeader">-</span><br>
+  Modification place arrivée suite à erreur de saisie – créé par Robert AURAY – version 3.02 COPYRIGHT©
+</h2>
+
+<h1>Modification du classement (erreur de dossard)</h1>
+
+<label style="font-size:18px; font-weight:bold;">Type de classement :</label>
+<select id="typeClassement" style="font-size:18px;">
+  <option value="provisoire">Classement provisoire</option>
+  <option value="definitif">Classement définitif</option>
+</select>
+
+<br><br>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+<button id="loadBtn">Charger fichier</button>
+
+<hr>
+<h2>Statut / Pénalité concurrent</h2>
+
+<label>Dossard :</label>
+<input type="number" id="statusBib">
+
+<label>Statut :</label>
+<select id="statusSelect">
+  <option value="ok">OK</option>
+  <option value="penalite">Pénalité</option>
+  <option value="abandon">Abandon</option>
+  <option value="dsq">DSQ</option>
+</select>
+
+<label>Pénalité (MM:SS) :</label>
+<input type="text" id="penaliteInput" oninput="maskPenalite(this)">
+
+<button id="applyStatusBtn">Appliquer statut</button>
+
+<hr>
+
+<table id="table">
+  <thead>
+    <tr>
+      <th>Place</th>
+      <th>Heure arrivée</th>
+      <th>Dossard</th>
+      <th>Nom</th>
+      <th>Prénom</th>
+      <th>Catégorie</th>
+      <th>Nom du chien</th>
+      <th>Pénalité</th>
+      <th>Temps final</th>
+      <th>Écart</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<hr>
+
+<button id="exportExcelBtn">Export Excel corrigé</button>
+<button id="exportPdfBtn">Export PDF corrigé</button>
+<button id="exportPdfCatBtn">Export PDF par catégories</button>
+
+<button id="sendMailBtn" style="background:#E2001A; color:white; display:none;">
+  Export FFSLC
+</button>
+
+<button onclick="window.open('https://chiensdor.github.io/application-chrono/', '_blank')">
+  Retour Application CHRONO
+</button>
+
+<script>
+let data = [];
+let arrivalTimes = [];
+let classementDefinitif = false;
+
+/* TYPE CLASSEMENT */
+document.getElementById("typeClassement").addEventListener("change", () => {
+  classementDefinitif = (document.getElementById("typeClassement").value === "definitif");
+  document.getElementById("sendMailBtn").style.display =
+    classementDefinitif ? "inline-block" : "none";
+
+  renderTable();
+
+  if (classementDefinitif) {
+    exportExcel("classement_definitif");
+  }
+});
+
+/* CHARGEMENT FICHIER */
+document.getElementById("loadBtn").onclick = () => {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return alert("Choisir un fichier");
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    data = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+    arrivalTimes = data
+      .map(r => r.Heure_arrivee)
+      .sort((a, b) => parseTimeToMs(a) - parseTimeToMs(b));
+
+    window.meta = {
+      epreuve: data[0].Epreuve || "-",
+      discipline: data[0].Discipline || "-",
+      distance: data[0].Distance_km || "-",
+      chienDor: data[0].Chien_d_or || "-",
+      lieu: data[0].Lieu || "-",
+      date: data[0].Date || "-"
+    };
+
+    document.getElementById("disciplineHeader").textContent = meta.discipline;
+
+    data.forEach((row, i) => {
+      row.status = row.status || "ok";
+      row.Penalite = row.Penalite || "00:00";
+
+      const startMs = parseTimeToMs(row.Heure_depart);
+      const finishMs = parseTimeToMs(row.Heure_arrivee);
+      const penSec = penaliteToSeconds(row.Penalite);
+
+      row.Temps_final_ms = finishMs - startMs + (penSec * 1000);
+      row.Temps_final = formatTime(row.Temps_final_ms);
+      row.Ecart = "-";
+      row.Place = i + 1;
+    });
+
+    renderTable();
+  };
+  reader.readAsArrayBuffer(file);
+};
+/* AFFICHAGE — tri par heure d’arrivée (provisoire) ou temps (définitif) */
+function renderTable() {
+
+  if (!classementDefinitif) {
+    data.sort((a, b) => parseTimeToMs(a.Heure_arrivee) - parseTimeToMs(b.Heure_arrivee));
+  } else {
+    sortByTime();
+  }
+
+  calculatePlaces();
+  calculateEcarts();
+
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+
+  data.forEach((row) => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${row.Place}</td>
+      <td>${row.Heure_arrivee}</td>
+      <td>${row.Dossard}</td>
+      <td>${row.Nom}</td>
+      <td>${row.Prénom}</td>
+      <td>${row.Catégorie}</td>
+      <td>${row.Nom_du_chien}</td>
+      <td>${row.Penalite}</td>
+      <td>${row.Temps_final}</td>
+      <td>${row.Ecart}</td>
+    `;
+
+    tr.draggable = true;
+    tbody.appendChild(tr);
+  });
+
+  enableDragDrop();
+}
+
+/* DRAG & DROP */
+function enableDragDrop() {
+  const rows = document.querySelectorAll("#tableBody tr");
+
+  rows.forEach(row => {
+    row.addEventListener("dragstart", () => row.classList.add("dragging"));
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      updateOrder();
+    });
+  });
+
+  const tbody = document.getElementById("tableBody");
+
+  tbody.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const dragging = document.querySelector(".dragging");
+    const after = getDragAfterElement(tbody, e.clientY);
+    if (!after) tbody.appendChild(dragging);
+    else tbody.insertBefore(dragging, after);
+  });
+}
+
+function getDragAfterElement(container, y) {
+  const rows = [...container.querySelectorAll("tr:not(.dragging)")];
+
+  return rows.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+/* MISE À JOUR APRÈS DÉPLACEMENT */
+function updateOrder() {
+  const newData = [];
+  const rows = document.querySelectorAll("#tableBody tr");
+
+  rows.forEach((row, index) => {
+
+    const bib = parseInt(row.children[2].textContent, 10);
+    const athlete = data.find(a => parseInt(a.Dossard, 10) === bib);
+
+    athlete.Heure_arrivee = arrivalTimes[index];
+
+    const startMs = parseTimeToMs(athlete.Heure_depart);
+    const finishMs = parseTimeToMs(athlete.Heure_arrivee);
+    const penSec = penaliteToSeconds(athlete.Penalite);
+
+    if (athlete.status === "ok") {
+      athlete.Temps_final_ms = finishMs - startMs;
+      athlete.Temps_final = formatTime(athlete.Temps_final_ms);
+    }
+    else if (athlete.status === "penalite") {
+      athlete.Temps_final_ms = (finishMs - startMs) + (penSec * 1000);
+      athlete.Temps_final = formatTime(athlete.Temps_final_ms);
+    }
+    else if (athlete.status === "abandon") {
+      athlete.Temps_final_ms = Infinity;
+      athlete.Temps_final = "DNF";
+    }
+    else if (athlete.status === "dsq") {
+      athlete.Temps_final_ms = Infinity;
+      athlete.Temps_final = "DSQ";
+    }
+
+    newData.push(athlete);
+  });
+
+  data = newData;
+  renderTable();
+}
+
+/* TRI CHRONO — tri par temps puis DNF puis DSQ (définitif) */
+function sortByTime() {
+  data.sort((a, b) => {
+
+    const aValid = a.Temps_final_ms !== Infinity;
+    const bValid = b.Temps_final_ms !== Infinity;
+
+    if (aValid && bValid) {
+      return a.Temps_final_ms - b.Temps_final_ms;
+    }
+
+    if (aValid && !bValid) return -1;
+    if (!aValid && bValid) return 1;
+
+    const order = { "abandon": 1, "dsq": 2 };
+    return order[a.status] - order[b.status];
+  });
+}
+
+/* PLACES */
+function calculatePlaces() {
+  data.forEach((row, index) => {
+    row.Place = index + 1;
+  });
+}
+
+/* TEMPS */
+function parseTimeToMs(str) {
+  if (!str) return 0;
+  const parts = str.split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  const s = parseInt(parts[2], 10) || 0;
+  return (h * 3600 + m * 60 + s) * 1000;
+}
+
+function formatTime(ms) {
+  if (ms === Infinity) return "";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+/* ÉCARTS */
+function calculateEcarts() {
+  const firstMs = data[0].Temps_final_ms;
+
+  data.forEach((row, index) => {
+    if (index === 0) row.Ecart = "-";
+    else row.Ecart = "+" + formatTime(row.Temps_final_ms - firstMs);
+  });
+}
+
+/* MASQUE PÉNALITÉ */
+function maskPenalite(input) {
+  let v = input.value.replace(/[^0-9:]/g, "");
+  const parts = v.split(":");
+
+  if (parts.length > 2) v = parts[0] + ":" + parts[1];
+  if (v.length === 2 && !v.includes(":")) v = v + ":";
+  if (parts.length === 2 && parts[1].length > 2) {
+    parts[1] = parts[1].substring(0, 2);
+    v = parts[0] + ":" + parts[1];
+  }
+
+  input.value = v;
+}
+
+/* MM:SS → secondes */
+function penaliteToSeconds(str) {
+  if (!str || !str.includes(":")) return 0;
+  const [m, s] = str.split(":").map(x => parseInt(x) || 0);
+  return (m * 60) + s;
+}
+
+/* MODULE STATUT / PENALITE */
+document.getElementById('applyStatusBtn').addEventListener('click', () => {
+  const bib = parseInt(document.getElementById('statusBib').value, 10);
+  const status = document.getElementById('statusSelect').value;
+  const penStr = document.getElementById('penaliteInput').value;
+
+  const athlete = data.find(r => parseInt(r.Dossard) === bib);
+
+  if (!athlete) {
+    alert(`Dossard ${bib} introuvable`);
+    return;
+  }
+
+  athlete.status = status;
+
+  const penSec = penaliteToSeconds(penStr);
+
+  if (status === 'penalite') {
+    athlete.Penalite = penStr;
+  } else {
+    athlete.Penalite = "00:00";
+  }
+
+  const startMs = parseTimeToMs(athlete.Heure_depart);
+  const finishMs = parseTimeToMs(athlete.Heure_arrivee);
+
+  if (status === 'ok') {
+    athlete.Temps_final_ms = finishMs - startMs;
+    athlete.Temps_final = formatTime(athlete.Temps_final_ms);
+  }
+  else if (status === 'penalite') {
+    athlete.Temps_final_ms = (finishMs - startMs) + (penSec * 1000);
+    athlete.Temps_final = formatTime(athlete.Temps_final_ms);
+  }
+  else if (status === 'abandon') {
+    athlete.Temps_final_ms = Infinity;
+    athlete.Temps_final = "DNF";
+  }
+  else if (status === 'dsq') {
+    athlete.Temps_final_ms = Infinity;
+    athlete.Temps_final = "DSQ";
+  }
+
+  renderTable();
+});
+/* NOM FICHIERS */
+function chronoFilename(prefix) {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${prefix}_${yyyy}-${mm}-${dd}_${hh}-${min}`;
+}
+
+/* EXPORT EXCEL */
+document.getElementById("exportExcelBtn").onclick = () => {
+  exportExcel("classement_corrige");
+};
+
+function exportExcel(prefix) {
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Corrigé");
+  XLSX.writeFile(wb, chronoFilename(prefix) + ".xlsx");
+}
+
+/* EXPORT PDF GÉNÉRAL */
+document.getElementById("exportPdfBtn").onclick = () => {
+  exportPdfGeneral("classement_corrige");
+};
+
+function exportPdfGeneral(prefix) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  let y = 15;
+
+  // 🔥 HEADER DYNAMIQUE BASÉ SUR LE FICHIER EXCEL
+  doc.setFontSize(18);
+  doc.text("Épreuve : " + meta.epreuve, 14, y);
+  y += 10;
+
+  doc.setFontSize(22);
+  doc.text("Classement général", doc.internal.pageSize.width / 2, y, { align: "center" });
+  y += 12;
+
+  doc.setFontSize(16);
+  doc.text("Discipline : " + meta.discipline, 14, y);
+  y += 8;
+
+  doc.text("Distance : " + meta.distance + " km", 14, y);
+  y += 8;
+
+  doc.text("Chien d'Or : " + meta.chienDor, 14, y);
+  y += 8;
+
+  doc.text("Lieu : " + meta.lieu, 14, y);
+  y += 8;
+
+  doc.text("Date : " + meta.date, 14, y);
+  y += 15;
+
+  const rows = data.map((row) => [
+    row.Place,
+    row.Dossard,
+    row.Nom,
+    row.Prénom,
+    row.Catégorie,
+    row.Nom_du_chien,
+    row.Temps_final,
+    row.Ecart
+  ]);
+
+  doc.autoTable({
+    headStyles: { fillColor: [0, 58, 112], textColor: 255 },
+    head: [['Place', 'Dossard', 'Nom', 'Prénom', 'Catégorie', 'Chien', 'Temps', 'Écart']],
+    body: rows,
+    startY: y
+  });
+
+  // 🔥 TEXTE BAS DE PAGE : PROVISOIRE / DÉFINITIF
+  doc.setFontSize(14);
+  doc.text(
+    classementDefinitif ? "Classement définitif" : "Classement provisoire",
+    14,
+    doc.internal.pageSize.height - 10
+  );
+
+  doc.save(chronoFilename(prefix) + ".pdf");
+}
+
+/* EXPORT PDF PAR CATÉGORIES */
+document.getElementById("exportPdfCatBtn").onclick = () => {
+  exportPdfCategories("classement_corrige_categories");
+};
+
+function exportPdfCategories(prefix) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  let y = 15;
+
+  // 🔥 HEADER DYNAMIQUE BASÉ SUR LE FICHIER EXCEL
+  doc.setFontSize(18);
+  doc.text("Épreuve : " + meta.epreuve, 14, y);
+  y += 10;
+
+  doc.setFontSize(22);
+  doc.text("Classement par catégories", doc.internal.pageSize.width / 2, y, { align: "center" });
+  y += 12;
+
+  doc.setFontSize(16);
+  doc.text("Discipline : " + meta.discipline, 14, y);
+  y += 8;
+
+  doc.text("Distance : " + meta.distance + " km", 14, y);
+  y += 8;
+
+  doc.text("Chien d'Or : " + meta.chienDor, 14, y);
+  y += 8;
+
+  doc.text("Lieu : " + meta.lieu, 14, y);
+  y += 8;
+
+  doc.text("Date : " + meta.date, 14, y);
+  y += 15;
+
+  const categories = [...new Set(data.map(r => r.Catégorie))].sort();
+
+  categories.forEach(cat => {
+    const filtered = data.filter(r => r.Catégorie === cat);
+    if (!filtered.length) return;
+
+    doc.setFontSize(18);
+    doc.text("Catégorie : " + cat, 14, y);
+    y += 10;
+
+    const rows = filtered.map((row) => [
+      row.Place,
+      row.Licence || "",
+      row.Dossard,
+      row.Nom,
+      row.Prénom,
+      row.Club || "",
+      row.Nom_du_chien,
+      row.Temps_final
+    ]);
+
+    doc.autoTable({
+      headStyles: { fillColor: [0, 58, 112], textColor: 255 },
+      head: [['Place', 'Licence', 'Dossard', 'Nom', 'Prénom', 'Club', 'Chien', 'Temps']],
+      body: rows,
+      startY: y
+    });
+
+    y = doc.lastAutoTable.finalY + 15;
+  });
+
+  // 🔥 TEXTE BAS DE PAGE : PROVISOIRE / DÉFINITIF
+  doc.setFontSize(14);
+  doc.text(
+    classementDefinitif ? "Classement définitif" : "Classement provisoire",
+    14,
+    doc.internal.pageSize.height - 10
+  );
+
+  doc.save(chronoFilename(prefix) + ".pdf");
+}
+
+/* EXPORT FFSLC */
+document.getElementById("sendMailBtn").onclick = () => {
+  exportExcel("classement_definitif");
+
+  const mailto =
+    "mailto:resultats@ffslc.fr" +
+    "?subject=Classement définitif FFSLC" +
+    "&body=Bonjour,%0D%0A%0D%0AVoici le classement définitif.%0D%0A%0D%0ACordialement.";
+
+  window.location.href = mailto;
+};
+
+</script>
+
+</body>
+</html>
